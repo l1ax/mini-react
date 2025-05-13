@@ -31,6 +31,7 @@ function createElement(type, props, ...children) {
 }
 
 function createTextNode(text) {
+    console.log(text);
     return {
         type: "TEXT_ELEMENT",
         props: {
