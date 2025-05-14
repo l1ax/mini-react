@@ -1,5 +1,7 @@
 let nextWorkOfUnit = null;
 
+let root = null;
+
 function render(el, container) {
     nextWorkOfUnit = {
         dom: container,
@@ -7,6 +9,8 @@ function render(el, container) {
             children: [el],
         },
     }
+
+    root = nextWorkOfUnit;
 
     requestIdleCallback(workLoop);
 }
@@ -34,7 +38,6 @@ function createElement(type, props, ...children) {
 }
 
 function createTextNode(text) {
-    console.log(text);
     return {
         type: "TEXT_ELEMENT",
         props: {
@@ -52,7 +55,26 @@ function workLoop(deadline) {
         shouldYield = deadline.timeRemaining() < 1;
     }
 
+    if (!nextWorkOfUnit && root) {
+        // 执行commit操作修改真实DOM
+        commitRoot();
+    }
+
     requestIdleCallback(workLoop);
+}
+
+function commitRoot() {
+    commitWork(root.child);
+}
+
+function commitWork(fiber) {
+    if (!fiber) {
+        return;
+    }
+
+    fiber.parent.dom.appendChild(fiber.dom);
+    commitWork(fiber.child);
+    commitWork(fiber.sibling)
 }
 
 function performUnitOfWork(fiber) {
