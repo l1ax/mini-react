@@ -1,0 +1,12 @@
+# React的编译时
+React框架在编译时只做了把JSX转化为React.createElement...的方法，在运行时调用这些方法获取vDOM
+
+# why fiber
+JS是单线程语言，大量的脚本执行会占用线程阻塞渲染，所以将task拆分成多个子task是非常自然、合理的想法
+JS在浏览器环境有一个原生的api叫requestIdleCallback，他接收一个方法，让其在线程的空闲时间执行，我们期望在每次事件循环的空闲时间去进行子task
+
+那么如何控制这个task集合的执行呢？
+我们现在有一个vDOM tree，以一个vDOM为task单位， 我们期望得到一个task 链表进行task执行
+那么会有两种方法：1.先构建 再执行 2. 边构建边执行，这里倾向第二种
+
+我们将这里的边构建边执行task的executor称为任务调度器scheduler，将vDOM建立不同层级之间的引用帮助构建链表的架构称为fiber

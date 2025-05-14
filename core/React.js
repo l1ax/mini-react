@@ -1,23 +1,26 @@
+let nextWorkOfUnit = null;
+
 function render(el, container) {
-    if (el.type === "TEXT_ELEMENT") {
-        const textNode = document.createTextNode(el.props.nodeValue);
-        container.appendChild(textNode);
-        return;
+    nextWorkOfUnit = {
+        dom: container,
+        props: {
+            children: [el],
+        },
     }
 
-    const dom = document.createElement(el.type);
+    requestIdleCallback(workLoop);
+}
 
-    Object.keys(el.props)
+function createDOM(type) {
+    return type === "TEXT_ELEMENT" ? document.createTextNode("") : document.createElement(type);
+}
+
+function updateProps(dom, props) {
+    Object.keys(props)
         .filter(key => key !== "children")
         .forEach(key => {
-            dom[key] = el.props[key];
+            dom[key] = props[key];
         });
-
-    el.props.children.forEach(child => {
-        render(child, dom);
-    });
-
-    container.appendChild(dom);
 }
 
 function createElement(type, props, ...children) {
@@ -37,6 +40,68 @@ function createTextNode(text) {
         props: {
             nodeValue: text,
         },
+    }
+}
+
+function workLoop(deadline) {
+    let shouldYield = false;
+
+    while (!shouldYield && nextWorkOfUnit) {
+        // 执行任务后返回下一个任务
+        nextWorkOfUnit = performUnitOfWork(nextWorkOfUnit);
+        shouldYield = deadline.timeRemaining() < 1;
+    }
+
+    requestIdleCallback(workLoop);
+}
+
+function performUnitOfWork(fiber) {
+    if (!fiber.dom) {
+        // 1. 创建 DOM
+        fiber.dom = createDOM(fiber.type);
+        fiber.parent.dom.appendChild(fiber.dom);
+
+        // 2. 处理 props
+        updateProps(fiber.dom, fiber.props);
+    }
+
+    // 3. 转换链表 设置好指针
+    initChildren(fiber);
+
+    // 4. 返回下一个待执行的任务
+    if (fiber.child) {
+        return fiber.child;
+    }
+
+    if (fiber.sibling) {
+        return fiber.sibling;
+    }
+
+    return fiber.parent?.sibling;
+}
+
+function initChildren(fiber) {
+    const children = fiber.props.children;
+    if (children) {
+        let prevSibling = null;
+        children.forEach((child, index) => {
+            const childFiber = {
+                type: child.type,
+                props: child.props,
+                parent: fiber,
+                child: null,
+                sibling: null,
+                dom: null,
+            }
+            if (index === 0) {
+                fiber.child = childFiber;
+            }
+            else {
+                prevSibling.sibling = childFiber;
+            }
+
+            prevSibling = childFiber;
+        })
     }
 }
 
