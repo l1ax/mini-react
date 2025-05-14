@@ -55,16 +55,16 @@ function workLoop(deadline) {
         shouldYield = deadline.timeRemaining() < 1;
     }
 
-    if (!nextWorkOfUnit && root) {
-        // 执行commit操作修改真实DOM
-        commitRoot();
-    }
-
     requestIdleCallback(workLoop);
 }
 
 function commitRoot() {
     commitWork(root.child);
+
+    if (!nextWorkOfUnit && root) {
+        // 执行commit操作修改真实DOM
+        commitRoot();
+    }
 }
 
 function commitWork(fiber) {
