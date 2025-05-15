@@ -82,23 +82,21 @@ function commitWork(fiber) {
     commitWork(fiber.sibling)
 }
 
-function performUnitOfWork(fiber) {
-    const isFunctionComponent = fiber.type instanceof Function;
-    if (!isFunctionComponent) {
-        if (!fiber.dom) {
-            // 1. 创建 DOM
-            fiber.dom = createDOM(fiber.type);
-    
-            // 2. 处理 props
-            updateProps(fiber.dom, fiber.props);
-        }
+const updateFunctionComponent = (fiber) => {
+    const children = [fiber.type(fiber.props)];
+    initChildren(fiber, children);
+}
+
+const updateHostComponent = (fiber) => {
+    if (!fiber.dom) {
+        fiber.dom = createDOM(fiber.type);
+        updateProps(fiber.dom, fiber.props);
     }
 
-    // 3. 转换链表 设置好指针
-    const children = isFunctionComponent ? [fiber.type(fiber.props)] : fiber.props.children;
-    initChildren(fiber, children);
+    initChildren(fiber, fiber.props.children);
+}
 
-    // 4. 返回下一个待执行的任务
+function executeNextUnitOfWork(fiber) {
     if (fiber.child) {
         return fiber.child;
     }
@@ -114,6 +112,19 @@ function performUnitOfWork(fiber) {
         }
         nextFiber = nextFiber.parent;
     }
+}
+
+function performUnitOfWork(fiber) {
+    const isFunctionComponent = fiber.type instanceof Function;
+    if (isFunctionComponent) {
+        updateFunctionComponent(fiber);
+    }
+    else {
+        updateHostComponent(fiber);
+    }
+
+    // 4. 返回下一个待执行的任务
+    return executeNextUnitOfWork(fiber);
 }
 
 function updateProps(dom, props) {
