@@ -55,16 +55,18 @@ function workLoop(deadline) {
         shouldYield = deadline.timeRemaining() < 1;
     }
 
+    if (!nextWorkOfUnit && root) {
+        // 执行commit操作修改真实DOM
+        commitRoot();
+        root = null;
+        return;
+    }
+
     requestIdleCallback(workLoop);
 }
 
 function commitRoot() {
     commitWork(root.child);
-
-    if (!nextWorkOfUnit && root) {
-        // 执行commit操作修改真实DOM
-        commitRoot();
-    }
 }
 
 function commitWork(fiber) {
@@ -81,7 +83,7 @@ function performUnitOfWork(fiber) {
     if (!fiber.dom) {
         // 1. 创建 DOM
         fiber.dom = createDOM(fiber.type);
-        fiber.parent.dom.appendChild(fiber.dom);
+        // fiber.parent.dom.appendChild(fiber.dom);
 
         // 2. 处理 props
         updateProps(fiber.dom, fiber.props);
