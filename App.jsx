@@ -1,14 +1,27 @@
 import React from "./core/React.js";
+// import Test from "./src/test.jsx";
 
-const App = <div className="app">
-    <h1>Hello World</h1>
-    <h2>
-        <span>Hello</span>
-        <span>World</span>
+function Test() {
+    return (
         <div>
-            nihao
+            Hello World Test
+            <Test2 num={10} />
         </div>
-    </h2>
-</div>;
+    )
+}
+
+function Test2(props) {
+    return (
+        <div>Hello World Test2 {props.num}</div>
+    )
+}
+
+function App() {
+    return (
+        <div className="app">
+            <Test />
+        </div>
+    )
+}
 
 export default App;

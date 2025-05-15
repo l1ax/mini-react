@@ -19,20 +19,15 @@ function createDOM(type) {
     return type === "TEXT_ELEMENT" ? document.createTextNode("") : document.createElement(type);
 }
 
-function updateProps(dom, props) {
-    Object.keys(props)
-        .filter(key => key !== "children")
-        .forEach(key => {
-            dom[key] = props[key];
-        });
-}
-
 function createElement(type, props, ...children) {
     return {
         type,
         props: {
             ...props,
-            children: children.map(child => typeof child === "string" ? createTextNode(child) : child),
+            children: children.map(child => {
+                const isTextNode = typeof child === "string" || typeof child === "number";
+                return isTextNode ? createTextNode(child) : child;
+            }),
         },
     }
 }
@@ -74,23 +69,34 @@ function commitWork(fiber) {
         return;
     }
 
-    fiber.parent.dom.appendChild(fiber.dom);
+    let fiberParent = fiber.parent;
+    while (!fiberParent.dom) {
+        fiberParent = fiberParent.parent;
+    }
+
+    if (fiber.dom) {
+        fiberParent.dom.appendChild(fiber.dom);
+    }
+
     commitWork(fiber.child);
     commitWork(fiber.sibling)
 }
 
 function performUnitOfWork(fiber) {
-    if (!fiber.dom) {
-        // 1. 创建 DOM
-        fiber.dom = createDOM(fiber.type);
-        // fiber.parent.dom.appendChild(fiber.dom);
-
-        // 2. 处理 props
-        updateProps(fiber.dom, fiber.props);
+    const isFunctionComponent = fiber.type instanceof Function;
+    if (!isFunctionComponent) {
+        if (!fiber.dom) {
+            // 1. 创建 DOM
+            fiber.dom = createDOM(fiber.type);
+    
+            // 2. 处理 props
+            updateProps(fiber.dom, fiber.props);
+        }
     }
 
     // 3. 转换链表 设置好指针
-    initChildren(fiber);
+    const children = isFunctionComponent ? [fiber.type(fiber.props)] : fiber.props.children;
+    initChildren(fiber, children);
 
     // 4. 返回下一个待执行的任务
     if (fiber.child) {
@@ -101,11 +107,24 @@ function performUnitOfWork(fiber) {
         return fiber.sibling;
     }
 
-    return fiber.parent?.sibling;
+    let nextFiber = fiber;
+    while (nextFiber) {
+        if (nextFiber.sibling) {
+            return nextFiber.sibling;
+        }
+        nextFiber = nextFiber.parent;
+    }
 }
 
-function initChildren(fiber) {
-    const children = fiber.props.children;
+function updateProps(dom, props) {
+    Object.keys(props)
+        .filter(key => key !== "children")
+        .forEach(key => {
+            dom[key] = props[key];
+        });
+}
+
+function initChildren(fiber, children) {
     if (children) {
         let prevSibling = null;
         children.forEach((child, index) => {
