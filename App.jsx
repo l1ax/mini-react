@@ -6,6 +6,7 @@ function Test() {
         <div>
             Hello World Test
             <Test2 num={10} />
+            <button onClick={() => console.log("click")}>Click me</button>
         </div>
     )
 }

@@ -131,7 +131,13 @@ function updateProps(dom, props) {
     Object.keys(props)
         .filter(key => key !== "children")
         .forEach(key => {
-            dom[key] = props[key];
+            if (key.startsWith("on")) {
+                // dom[key] = props[key];
+                dom.addEventListener(key.slice(2).toLowerCase(), props[key]);
+            }
+            else {
+                dom[key] = props[key];
+            }
         });
 }
 
