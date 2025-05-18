@@ -1,12 +1,18 @@
 import React from "./core/React.js";
 // import Test from "./src/test.jsx";
 
+let count = 0;
 function Test() {
+    function handleClick() {
+        count++;
+        console.log("clicked", count);
+        React.update();
+    }
     return (
         <div>
             Hello World Test
             <Test2 num={10} />
-            <button onClick={() => console.log("click")}>Click me</button>
+            <button onClick={handleClick}>Click me {count}</button>
         </div>
     )
 }

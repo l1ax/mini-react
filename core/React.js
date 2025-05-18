@@ -1,16 +1,31 @@
 let nextWorkOfUnit = null;
 
-let root = null;
+let wipRoot = null;
+
+let currentRoot = null;
 
 function render(el, container) {
-    nextWorkOfUnit = {
+    wipRoot = {
         dom: container,
         props: {
             children: [el],
         },
+        alternate: null
     }
 
-    root = nextWorkOfUnit;
+    nextWorkOfUnit = wipRoot;
+
+    requestIdleCallback(workLoop);
+}
+
+function update() {
+    wipRoot = {
+        dom: currentRoot.dom,
+        props: currentRoot.props,
+        alternate: currentRoot
+    }
+
+    nextWorkOfUnit = wipRoot;
 
     requestIdleCallback(workLoop);
 }
@@ -50,10 +65,11 @@ function workLoop(deadline) {
         shouldYield = deadline.timeRemaining() < 1;
     }
 
-    if (!nextWorkOfUnit && root) {
+    if (!nextWorkOfUnit && wipRoot) {
         // 执行commit操作修改真实DOM
         commitRoot();
-        root = null;
+        currentRoot = wipRoot;
+        wipRoot = null;
         return;
     }
 
@@ -61,7 +77,7 @@ function workLoop(deadline) {
 }
 
 function commitRoot() {
-    commitWork(root.child);
+    commitWork(wipRoot.child);
 }
 
 function commitWork(fiber) {
@@ -74,8 +90,14 @@ function commitWork(fiber) {
         fiberParent = fiberParent.parent;
     }
 
-    if (fiber.dom) {
+    // if (fiber.dom) {
+    //     fiberParent.dom.appendChild(fiber.dom);
+    // }
+    if (fiber.effectTag === "PLACEMENT" && fiber.dom) {
         fiberParent.dom.appendChild(fiber.dom);
+    }
+    else if (fiber.effectTag === "UPDATE" && fiber.dom) {
+        updateProps(fiber.dom, fiber.alternate?.props, fiber.props);
     }
 
     commitWork(fiber.child);
@@ -84,16 +106,16 @@ function commitWork(fiber) {
 
 const updateFunctionComponent = (fiber) => {
     const children = [fiber.type(fiber.props)];
-    initChildren(fiber, children);
+    reconcileChildren(fiber, children);
 }
 
 const updateHostComponent = (fiber) => {
     if (!fiber.dom) {
         fiber.dom = createDOM(fiber.type);
-        updateProps(fiber.dom, fiber.props);
+        updateProps(fiber.dom, {}, fiber.props);
     }
 
-    initChildren(fiber, fiber.props.children);
+    reconcileChildren(fiber, fiber.props.children);
 }
 
 function executeNextUnitOfWork(fiber) {
@@ -127,32 +149,104 @@ function performUnitOfWork(fiber) {
     return executeNextUnitOfWork(fiber);
 }
 
-function updateProps(dom, props) {
-    Object.keys(props)
+function updateProps(dom, prevProps, nextProps) {
+    // Object.keys(props)
+    //     .filter(key => key !== "children")
+    //     .forEach(key => {
+    //         if (key.startsWith("on")) {
+    //             // dom[key] = props[key];
+    //             dom.addEventListener(key.slice(2).toLowerCase(), props[key]);
+    //         }
+    //         else {
+    //             dom[key] = props[key];
+    //         }
+    //     });
+    // 2. prev没有, next有，添加
+    // 3. prev和next都有，更新
+    Object.keys(prevProps)
+        .filter(key => key !== "children")
+        .forEach(key => {
+           // 1. prev有, next没有，删除
+            if (!Object.hasOwn(nextProps, key)) {
+                if (key.startsWith("on")) {
+                    dom.removeEventListener(key.slice(2).toLowerCase(), prevProps[key]);
+                }
+                else {
+                    dom[key] = null;
+                }
+            }
+        });
+    
+    // 2. prev没有, next有，添加
+    Object.keys(nextProps)
+        .filter(key => key !== "children")
+        .forEach(key => {
+            if (!Object.hasOwn(prevProps, key)) {
+                if (key.startsWith("on")) {
+                    dom.addEventListener(key.slice(2).toLowerCase(), nextProps[key]);
+                }
+                else {
+                    dom[key] = nextProps[key];
+                }
+            }
+        });
+
+    // 3. prev和next都有，更新
+    Object.keys(nextProps)
         .filter(key => key !== "children")
         .forEach(key => {
             if (key.startsWith("on")) {
-                // dom[key] = props[key];
-                dom.addEventListener(key.slice(2).toLowerCase(), props[key]);
+                dom.addEventListener(key.slice(2).toLowerCase(), nextProps[key]);
+                dom.removeEventListener(key.slice(2).toLowerCase(), prevProps[key]);
             }
             else {
-                dom[key] = props[key];
+                dom[key] = nextProps[key];
             }
         });
 }
 
-function initChildren(fiber, children) {
+function reconcileChildren(fiber, children) {
+    let oldFiber = fiber.alternate?.child;
+    let prevChild = null;
     if (children) {
         let prevSibling = null;
+        prevChild = oldFiber?.child;
+
         children.forEach((child, index) => {
-            const childFiber = {
-                type: child.type,
-                props: child.props,
-                parent: fiber,
-                child: null,
-                sibling: null,
-                dom: null,
+            const isSameNode = oldFiber && child && oldFiber.type === child.type;
+            let childFiber = null;
+
+            if (isSameNode) {
+                // update the node
+                childFiber = {
+                    type: child.type,
+                    props: child.props,
+                    parent: fiber,
+                    child: null,
+                    sibling: null,
+                    dom: oldFiber.dom,
+                    alternate: oldFiber,
+                    effectTag: "UPDATE"
+                }
             }
+            else {
+                // create a new node
+                childFiber = {
+                    type: child.type,
+                    props: child.props,
+                    parent: fiber,
+                    child: null,
+                    sibling: null,
+                    dom: null,
+                    alternate: oldFiber,
+                    effectTag: "PLACEMENT"
+                }
+            } 
+
+            if (oldFiber) {
+                oldFiber = oldFiber.sibling;
+            }
+
             if (index === 0) {
                 fiber.child = childFiber;
             }
@@ -168,4 +262,5 @@ function initChildren(fiber, children) {
 export default {
     createElement,
     render,
+    update
 }
