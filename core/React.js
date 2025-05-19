@@ -6,6 +6,8 @@ let currentRoot = null;
 
 let deletedFibers = [];
 
+let wipFiber = null;
+
 function render(el, container) {
     wipRoot = {
         dom: container,
@@ -19,13 +21,18 @@ function render(el, container) {
 }
 
 function update() {
-    wipRoot = {
-        dom: currentRoot.dom,
-        props: currentRoot.props,
-        alternate: currentRoot
-    }
+    let currentFiber = wipFiber;
 
-    nextWorkOfUnit = wipRoot;
+    return () => {
+        console.log(currentFiber);
+        
+        wipRoot = {
+            ...currentFiber,
+            alternate: currentFiber
+        }
+
+        nextWorkOfUnit = wipRoot;
+    }
 }
 
 function createDOM(type) {
@@ -60,6 +67,11 @@ function workLoop(deadline) {
     while (!shouldYield && nextWorkOfUnit) {
         // 执行任务后返回下一个任务
         nextWorkOfUnit = performUnitOfWork(nextWorkOfUnit);
+
+        if (wipRoot?.sibling?.type === nextWorkOfUnit?.type) {
+            nextWorkOfUnit = undefined;
+        }
+
         shouldYield = deadline.timeRemaining() < 1;
     }
 
@@ -120,6 +132,8 @@ function commitWork(fiber) {
 }
 
 const updateFunctionComponent = (fiber) => {
+    wipFiber = fiber;
+
     const children = [fiber.type(fiber.props)];
     reconcileChildren(fiber, children);
 }
@@ -230,19 +244,20 @@ function reconcileChildren(fiber, children) {
                 }
             }
             else {
-                // create a new node
-                childFiber = {
-                    type: child.type,
-                    props: child.props,
-                    parent: fiber,
-                    child: null,
-                    sibling: null,
-                    dom: null,
-                    effectTag: "PLACEMENT"
+                if (child) {
+                    // create a new node
+                    childFiber = {
+                        type: child.type,
+                        props: child.props,
+                        parent: fiber,
+                        child: null,
+                        sibling: null,
+                        dom: null,
+                        effectTag: "PLACEMENT"
+                    }
                 }
 
                 if (oldFiber) {
-                    console.log(oldFiber);
                     deletedFibers.push(oldFiber);
                 }
             } 
@@ -258,7 +273,9 @@ function reconcileChildren(fiber, children) {
                 prevSibling.sibling = childFiber;
             }
 
-            prevSibling = childFiber;
+            if (childFiber) {
+                prevSibling = childFiber;
+            }
         })
 
         // 删除剩余的old fiber存在，new fiber不存在的节点
