@@ -242,6 +242,7 @@ function reconcileChildren(fiber, children) {
                 }
 
                 if (oldFiber) {
+                    console.log(oldFiber);
                     deletedFibers.push(oldFiber);
                 }
             } 
@@ -259,6 +260,12 @@ function reconcileChildren(fiber, children) {
 
             prevSibling = childFiber;
         })
+
+        // 删除剩余的old fiber存在，new fiber不存在的节点
+        while (oldFiber) {
+            deletedFibers.push(oldFiber);
+            oldFiber = oldFiber.sibling;
+        }
     }
 }
 
