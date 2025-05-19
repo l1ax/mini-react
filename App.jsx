@@ -1,34 +1,35 @@
 import React from "./core/React.js";
-// import Test from "./src/test.jsx";
 
-let count = 0;
-function Test() {
-    function handleClick() {
-        count++;
-        console.log("clicked", count);
+let showBar = false;
+function Counter() {
+    // const foo = <div>foo</div>;
+    function Foo () {
+        return <div>foo</div>
+    }
+
+    const bar = <p>bar</p>;
+
+    function handleShowBar() {
+        showBar = !showBar;
         React.update();
     }
+
     return (
         <div>
-            Hello World Test
-            <Test2 num={10} />
-            <button onClick={handleClick}>Click me {count}</button>
+        Counter
+        {/* <div>{showBar ? bar : foo}</div> */}
+        <div>{showBar ? bar : <Foo></Foo>}</div>
+        <button onClick={handleShowBar}>showBar</button>
         </div>
-    )
+    );
 }
-
-function Test2(props) {
-    return (
-        <div>Hello World Test2 {props.num}</div>
-    )
-}
-
 function App() {
     return (
-        <div className="app">
-            <Test />
+        <div>
+        hi-mini-react
+        <Counter ></Counter>
         </div>
-    )
+    );
 }
 
 export default App;

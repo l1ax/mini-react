@@ -4,6 +4,8 @@ let wipRoot = null;
 
 let currentRoot = null;
 
+let deletedFibers = [];
+
 function render(el, container) {
     wipRoot = {
         dom: container,
@@ -14,8 +16,6 @@ function render(el, container) {
     }
 
     nextWorkOfUnit = wipRoot;
-
-    requestIdleCallback(workLoop);
 }
 
 function update() {
@@ -26,8 +26,6 @@ function update() {
     }
 
     nextWorkOfUnit = wipRoot;
-
-    requestIdleCallback(workLoop);
 }
 
 function createDOM(type) {
@@ -70,14 +68,34 @@ function workLoop(deadline) {
         commitRoot();
         currentRoot = wipRoot;
         wipRoot = null;
-        return;
     }
 
     requestIdleCallback(workLoop);
 }
 
 function commitRoot() {
+    deletedFibers.forEach((fiber) => {
+        commitDeletion(fiber);
+    });
+
     commitWork(wipRoot.child);
+
+    deletedFibers.length = 0;
+}
+
+function commitDeletion(fiber) {
+    if (fiber.dom) {
+        let fiberParent = fiber.parent;
+        while (!fiberParent.dom) {
+            fiberParent = fiberParent.parent;
+        }
+
+        fiberParent.dom.removeChild(fiber.dom);
+    }
+    else {
+        // 如果遇到函数组件，则递归删除
+        commitDeletion(fiber.child);
+    }
 }
 
 function commitWork(fiber) {
@@ -90,9 +108,6 @@ function commitWork(fiber) {
         fiberParent = fiberParent.parent;
     }
 
-    // if (fiber.dom) {
-    //     fiberParent.dom.appendChild(fiber.dom);
-    // }
     if (fiber.effectTag === "PLACEMENT" && fiber.dom) {
         fiberParent.dom.appendChild(fiber.dom);
     }
@@ -150,19 +165,6 @@ function performUnitOfWork(fiber) {
 }
 
 function updateProps(dom, prevProps, nextProps) {
-    // Object.keys(props)
-    //     .filter(key => key !== "children")
-    //     .forEach(key => {
-    //         if (key.startsWith("on")) {
-    //             // dom[key] = props[key];
-    //             dom.addEventListener(key.slice(2).toLowerCase(), props[key]);
-    //         }
-    //         else {
-    //             dom[key] = props[key];
-    //         }
-    //     });
-    // 2. prev没有, next有，添加
-    // 3. prev和next都有，更新
     Object.keys(prevProps)
         .filter(key => key !== "children")
         .forEach(key => {
@@ -207,10 +209,8 @@ function updateProps(dom, prevProps, nextProps) {
 
 function reconcileChildren(fiber, children) {
     let oldFiber = fiber.alternate?.child;
-    let prevChild = null;
     if (children) {
         let prevSibling = null;
-        prevChild = oldFiber?.child;
 
         children.forEach((child, index) => {
             const isSameNode = oldFiber && child && oldFiber.type === child.type;
@@ -238,8 +238,11 @@ function reconcileChildren(fiber, children) {
                     child: null,
                     sibling: null,
                     dom: null,
-                    alternate: oldFiber,
                     effectTag: "PLACEMENT"
+                }
+
+                if (oldFiber) {
+                    deletedFibers.push(oldFiber);
                 }
             } 
 
@@ -259,8 +262,12 @@ function reconcileChildren(fiber, children) {
     }
 }
 
-export default {
+requestIdleCallback(workLoop);
+
+const React = {
     createElement,
     render,
     update
 }
+
+export default React;
