@@ -113,7 +113,7 @@ function commitEffectHooks() {
             if (!fiber.alternate) {
                 // init
                 fiber.effectHooks.forEach((effectHook) => {
-                    effectHook.callback();
+                    effectHook.cleanup = effectHook.callback();
                 })
             }
             else {
@@ -126,7 +126,7 @@ function commitEffectHooks() {
                     })
 
                     if (needUpdate) {
-                        effectHook.callback();
+                        effectHook.cleanup = effectHook.callback();
                     }
                 })
             }
@@ -140,6 +140,28 @@ function commitEffectHooks() {
             run(fiber.sibling);
         }
     }
+
+    function runCleanup(fiber) {
+        if (!fiber) {
+            return;
+        }
+
+        if (fiber.effectHooks) {
+            fiber.effectHooks.forEach(hook => {
+                hook.cleanup?.();
+            })
+        }
+
+        if (fiber.child) {
+            runCleanup(fiber.child);
+        }
+
+        if (fiber.sibling) {
+            runCleanup(fiber.sibling);
+        }
+    }
+
+    runCleanup(wipRoot.alternate);
 
     run(wipRoot);
 }
@@ -399,7 +421,8 @@ let effectHooks = [];
 function useEffect(callback, deps) {
     const effectHook = {
         callback,
-        deps
+        deps,
+        cleanup: undefined
     }
 
     effectHooks.push(effectHook);
