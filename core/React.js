@@ -10,6 +10,9 @@ let wipFiber = null;
 
 let stateHookIndex = 0;
 
+// 添加一个标志变量表示是否已经安排了更新
+let isUpdating = false;
+
 
 function render(el, container) {
     wipRoot = {
@@ -325,15 +328,22 @@ function useState(initial) {
             return;
         }
 
-        console.log(11)
-
         stateHook.queue.push(typeof action === "function" ? action : () => action);
-        wipRoot = {
-            ...currentFiber,
-            alternate: currentFiber
+        
+        // 如果已经安排了更新，就不再重复安排
+        if (!isUpdating) {
+            isUpdating = true;
+            
+            // 可以用Promise.resolve().then()模拟React的批量更新机制
+            Promise.resolve().then(() => {
+                wipRoot = {
+                    ...currentFiber,
+                    alternate: currentFiber
+                };
+                nextWorkOfUnit = wipRoot;
+                isUpdating = false;
+            });
         }
-
-        nextWorkOfUnit = wipRoot;
     }
 
     return [stateHook.state, setState];
