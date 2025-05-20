@@ -9,7 +9,7 @@ function Foo() {
     }
 
     function handleBarClick() {
-        setBar((b) => b + "bar");
+        setBar("bar");
     }
 
     return (
