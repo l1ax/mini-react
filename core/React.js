@@ -88,6 +88,11 @@ function workLoop(deadline) {
         wipRoot = null;
     }
 
+    // 修复useEffect中 setState后，重新赋值nextWorkOfUnit后 没有重新执行commitRoot
+    if (nextWorkOfUnit && !wipRoot) {
+        wipRoot = currentRoot
+    }
+
     requestIdleCallback(workLoop);
 }
 
