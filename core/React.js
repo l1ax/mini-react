@@ -8,6 +8,9 @@ let deletedFibers = [];
 
 let wipFiber = null;
 
+let stateHookIndex = 0;
+
+
 function render(el, container) {
     wipRoot = {
         dom: container,
@@ -133,6 +136,10 @@ function commitWork(fiber) {
 
 const updateFunctionComponent = (fiber) => {
     wipFiber = fiber;
+
+    stateHookIndex = 0;
+
+    stateHooks = [];
 
     const children = [fiber.type(fiber.props)];
     reconcileChildren(fiber, children);
@@ -286,12 +293,45 @@ function reconcileChildren(fiber, children) {
     }
 }
 
+let stateHooks;
+
+function useState(initial) {
+    let currentFiber = wipFiber;
+
+    const oldHook = currentFiber.alternate?.stateHooks[stateHookIndex];
+
+    const stateHook = {
+        state: oldHook ? oldHook.state : initial
+    }
+
+    stateHooks.push(stateHook);
+
+    stateHookIndex++;
+
+    currentFiber.stateHooks = stateHooks;
+
+    function setState(action) {
+        stateHook.state = action(stateHook.state);
+
+        wipRoot = {
+            ...currentFiber,
+            alternate: currentFiber
+        }
+
+        nextWorkOfUnit = wipRoot;
+    }
+
+    return [stateHook.state, setState];
+}
+
+
 requestIdleCallback(workLoop);
 
 const React = {
     createElement,
     render,
-    update
+    update,
+    useState
 }
 
 export default React;

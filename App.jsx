@@ -1,52 +1,32 @@
 import React from "./core/React.js";
 
-let countBar = 1;
-function Bar() {
-    console.log("Bar render");
-    const update = React.update();
-    function handleClick() {
-        countBar++;
-        update();
-    }
-    return (
-        <div>
-            Bar: {countBar}
-            <button onClick={handleClick}>+</button>
-        </div>
-    )
-}
-
-let countFoo = 1;
 function Foo() {
-    console.log("Foo render");
-    const update = React.update();
+    const [count, setCount] = React.useState(0);
+    const [bar, setBar] = React.useState("bar")
+
     function handleClick() {
-        countFoo++;
-        update();
+        setCount((c) => c + 1);
     }
+
+    function handleBarClick() {
+        setBar((b) => b + "bar");
+    }
+
     return (
         <div>
-            Foo: {countFoo}
+            <h1>foo</h1>
+            {count}
             <button onClick={handleClick}>+</button>
+            <button onClick={handleBarClick}>+bar</button>
+            {bar}
         </div>
     )
 }
-
-let countRoot = 0;
 function App() {
-    console.log("App render");
-    const update = React.update();
-    function handleClick() {
-        countRoot++;
-        update();
-    }
-
     return (
         <div>
-            hi-mini-react count: {countRoot}
-            <button onClick={handleClick}>+</button>
+            hi-mini-react
             <Foo></Foo>
-            <Bar></Bar>
         </div>
     );
 }
