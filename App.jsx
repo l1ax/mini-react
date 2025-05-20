@@ -12,6 +12,14 @@ function Foo() {
         setBar("bar");
     }
 
+    React.useEffect(() => {
+        console.log('init');
+    }, [])
+
+    React.useEffect(() => {
+        console.log('update');
+    }, [count])
+
     return (
         <div>
             <h1>foo</h1>

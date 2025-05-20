@@ -99,6 +99,49 @@ function commitRoot() {
     commitWork(wipRoot.child);
 
     deletedFibers.length = 0;
+
+    commitEffectHooks();
+}
+
+function commitEffectHooks() {
+    function run(fiber) {
+        if (!fiber) {
+            return;
+        }
+
+        if (fiber.effectHooks) {
+            if (!fiber.alternate) {
+                // init
+                fiber.effectHooks.forEach((effectHook) => {
+                    effectHook.callback();
+                })
+            }
+            else {
+                // update
+                fiber.effectHooks?.forEach((effectHook, index) => {
+                    const oldEffectHook = fiber.alternate.effectHooks[index];
+
+                    const needUpdate = effectHook.deps.some((dep, index) => {
+                        return !Object.is(dep, oldEffectHook.deps[index]);
+                    })
+
+                    if (needUpdate) {
+                        effectHook.callback();
+                    }
+                })
+            }
+        }
+
+        if (fiber.child) {
+            run(fiber.child);
+        }
+
+        if (fiber.sibling) {
+            run(fiber.sibling);
+        }
+    }
+
+    run(wipRoot);
 }
 
 function commitDeletion(fiber) {
@@ -143,6 +186,8 @@ const updateFunctionComponent = (fiber) => {
     stateHookIndex = 0;
 
     stateHooks = [];
+
+    effectHooks = [];
 
     const children = [fiber.type(fiber.props)];
     reconcileChildren(fiber, children);
@@ -349,6 +394,18 @@ function useState(initial) {
     return [stateHook.state, setState];
 }
 
+let effectHooks = [];
+
+function useEffect(callback, deps) {
+    const effectHook = {
+        callback,
+        deps
+    }
+
+    effectHooks.push(effectHook);
+
+    wipFiber.effectHooks = effectHooks;
+}
 
 requestIdleCallback(workLoop);
 
@@ -356,7 +413,8 @@ const React = {
     createElement,
     render,
     update,
-    useState
+    useState,
+    useEffect
 }
 
 export default React;
